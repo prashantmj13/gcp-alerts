@@ -12,7 +12,7 @@ A reusable Terraform module that provisions **GCP Cloud Monitoring alert policie
 - [Calling the Module from Git](#calling-the-module-from-git)
 - [Quick Start](#quick-start)
 - [Module Usage](#module-usage)
-- [Notification Channel — Pub/Sub → Cloud Run](#notification-channel--pubsub--cloud-run)
+- [Notification Channels — Pub/Sub and Email](#notification-channels--pubsub-and-email)
 - [Input Variables](#input-variables)
 - [Service Variables Reference](#service-variables-reference)
 - [Outputs](#outputs)
@@ -66,32 +66,33 @@ A reusable Terraform module that provisions **GCP Cloud Monitoring alert policie
 └─────────────────────────────────────────────────────────────┘
                          │
                          ▼
-              ┌──────────────────────┐
-              │  Pub/Sub Topic       │
-              │  (receives alerts)   │
-              └──────────┬───────────┘
-                         │ push subscription
-                         ▼
-              ┌──────────────────────────────┐
-              │  Cloud Run Function           │
-              │  (alert-processor)            │
-              │                              │
-              │  • parse incident JSON        │
-              │  • read severity / service    │
-              │  • route to correct channel   │
-              └──────────┬───────────────────┘
-                         │
-          ┌──────────────┼──────────────────┐
-               ▼
-         Moogsoft (on-prem)
-         (ticketing & event correlation)
+        ┌────────────────────────────────────────────┐
+        │   Cloud Monitoring Notification Channels    │
+        │                                            │
+        │  ┌─────────────────┐  ┌─────────────────┐ │
+        │  │  Pub/Sub Topic  │  │  Email Channel  │ │
+        │  │  (optional)     │  │  (optional)     │ │
+        │  └────────┬────────┘  └────────┬────────┘ │
+        └───────────┼────────────────────┼───────────┘
+                    │ push subscription   │ direct email
+                    ▼                    ▼
+        ┌───────────────────┐   ┌────────────────────┐
+        │  Cloud Run        │   │  On-call            │
+        │  Function         │   │  distribution list  │
+        │  (alert-processor)│   │  (team inboxes)     │
+        └────────┬──────────┘   └────────────────────┘
+                 │
+                 ▼
+        Moogsoft (on-prem)
+        (ticketing & event correlation)
 ```
 
 **Alert flow:**
 1. GCP Cloud Monitoring evaluates metric conditions every minute.
 2. When a condition is met for the configured duration, the alert fires.
-3. The Pub/Sub notification channel publishes a JSON payload to the configured topic.
-4. A Cloud Run function subscribed via push subscription receives the payload, reads the `severity` and `service` user labels, and forwards the event to **Moogsoft** (on-premises) for ticketing and event correlation.
+3. All configured notification channels receive the alert simultaneously:
+   - **Pub/Sub** → Cloud Run function → Moogsoft (on-prem) for ticketing
+   - **Email** → direct delivery to configured distribution list(s)
 
 ---
 
@@ -364,15 +365,69 @@ module "monitoring" {
 
 ---
 
-## Notification Channel — Pub/Sub → Cloud Run
+## Notification Channels — Pub/Sub and Email
 
-The module creates **one** `google_monitoring_notification_channel` of type `pubsub` and wires it to every alert policy.
+The module supports two notification channel types that can be used independently or together. When both are configured, every alert is delivered to all channels simultaneously.
+
+| Channel | Variable | When to use |
+|---|---|---|
+| **Pub/Sub** | `pubsub_notification_topic` | Forward to Cloud Run → Moogsoft for automated ticketing |
+| **Email** | `email_notification_addresses` | Direct delivery to on-call distribution lists |
+
+### Pub/Sub only
+
+```hcl
+module "monitoring" {
+  source    = "git::https://github.com/YOUR_ORG/YOUR_REPO.git//modules/gcp-monitoring-alerts?ref=v1.0.0"
+  project_id = "my-project"
+
+  pubsub_notification_topic = "projects/my-project/topics/gcp-monitoring-alerts"
+
+  gke = { enabled = true }
+}
+```
+
+### Email only
+
+```hcl
+module "monitoring" {
+  source    = "git::https://github.com/YOUR_ORG/YOUR_REPO.git//modules/gcp-monitoring-alerts?ref=v1.0.0"
+  project_id = "my-project"
+
+  email_notification_addresses = [
+    "platform-alerts@example.com",
+    "sre-oncall@example.com",
+  ]
+
+  gke = { enabled = true }
+}
+```
+
+### Both channels (recommended for production)
+
+```hcl
+module "monitoring" {
+  source    = "git::https://github.com/YOUR_ORG/YOUR_REPO.git//modules/gcp-monitoring-alerts?ref=v1.0.0"
+  project_id = "my-project"
+
+  pubsub_notification_topic = "projects/my-project/topics/gcp-monitoring-alerts"
+
+  email_notification_addresses = [
+    "platform-alerts@example.com",
+    "sre-oncall@example.com",
+  ]
+
+  gke = { enabled = true }
+}
+```
+
+### Pub/Sub topic format
 
 ```
 pubsub_notification_topic = "projects/{project_id}/topics/{topic_name}"
 ```
 
-When an alert fires, Cloud Monitoring publishes to the topic. A Cloud Run function with a Pub/Sub **push subscription** receives each message, decodes it, and routes to the correct destination based on the `severity` and `service` labels embedded in the payload.
+When an alert fires, Cloud Monitoring publishes to the topic. A Cloud Run function with a Pub/Sub **push subscription** receives each message, decodes it, and forwards the event to Moogsoft (on-prem) based on the `severity` and `service` labels in the payload.
 
 ### Alert payload format
 
@@ -488,8 +543,9 @@ gcloud run services add-iam-policy-binding alert-processor \
 | Variable | Type | Default | Description |
 |---|---|---|---|
 | `project_id` | `string` | **required** | GCP project ID where alert policies are created |
-| `pubsub_notification_topic` | `string` | `null` | Full Pub/Sub topic resource name. Format: `projects/{project}/topics/{topic}` |
-| `pubsub_notification_channel_display_name` | `string` | `"GCP Monitoring Alerts - Pub/Sub"` | Display name for the created notification channel |
+| `pubsub_notification_topic` | `string` | `null` | Full Pub/Sub topic resource name. Format: `projects/{project}/topics/{topic}`. Leave `null` to skip Pub/Sub. |
+| `pubsub_notification_channel_display_name` | `string` | `"GCP Monitoring Alerts - Pub/Sub"` | Display name for the Pub/Sub notification channel |
+| `email_notification_addresses` | `list(string)` | `[]` | Email addresses to notify. One channel is created per address. Can be used with or without Pub/Sub. |
 | `default_labels` | `map(string)` | `{}` | Labels applied to every alert policy (e.g. `{ team = "platform", env = "prod" }`) |
 | `alert_documentation_prefix` | `string` | `""` | URL prefix prepended to runbook links in alert documentation |
 
@@ -732,6 +788,7 @@ Each service accepts an object variable with `optional()` fields. Pass `{ enable
 | Output | Type | Description |
 |---|---|---|
 | `pubsub_notification_channel_name` | `string` | Resource name of the Pub/Sub notification channel. `null` if no topic was provided. |
+| `email_notification_channel_names` | `map(string)` | Map of email address → notification channel resource name. Empty map if no addresses provided. |
 | `enabled_services` | `list(string)` | List of service names for which alert policies are enabled. |
 | `alert_policy_ids` | `map(string)` | Map of alert identifier → GCP alert policy resource name. Only enabled services are included. |
 

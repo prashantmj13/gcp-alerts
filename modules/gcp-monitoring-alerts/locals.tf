@@ -11,9 +11,13 @@ locals {
   severity_critical = { severity = "critical" }
 
   # Resolved notification channel list wired to every alert policy.
-  # If no Pub/Sub topic is provided, alert policies are created without
-  # a channel (alerts remain visible in Cloud Monitoring console).
-  notification_channels = var.pubsub_notification_topic != null ? [
-    google_monitoring_notification_channel.pubsub[0].name
-  ] : []
+  # Combines Pub/Sub and email channels — both receive every alert.
+  # If neither is configured, policies are created without a channel
+  # (alerts remain visible in Cloud Monitoring console only).
+  notification_channels = concat(
+    var.pubsub_notification_topic != null ? [
+      google_monitoring_notification_channel.pubsub[0].name
+    ] : [],
+    [for ch in google_monitoring_notification_channel.email : ch.name]
+  )
 }

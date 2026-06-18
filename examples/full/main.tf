@@ -27,8 +27,12 @@ module "monitoring" {
 
   project_id = var.project_id
 
-  pubsub_notification_topic            = "projects/${var.project_id}/topics/${var.alert_topic_name}"
+  # Pub/Sub → Cloud Run function → Moogsoft (on-prem ticketing)
+  pubsub_notification_topic                = "projects/${var.project_id}/topics/${var.alert_topic_name}"
   pubsub_notification_channel_display_name = "SRE Platform Alerts"
+
+  # Email → direct delivery to on-call distribution lists
+  email_notification_addresses = var.alert_email_addresses
 
   default_labels = {
     team        = "sre"
@@ -166,9 +170,14 @@ module "monitoring" {
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
 
-output "notification_channel" {
+output "pubsub_notification_channel" {
   description = "Pub/Sub notification channel resource name."
   value       = module.monitoring.pubsub_notification_channel_name
+}
+
+output "email_notification_channels" {
+  description = "Map of email address to notification channel resource name."
+  value       = module.monitoring.email_notification_channel_names
 }
 
 output "enabled_services" {
@@ -200,4 +209,11 @@ variable "gke_cluster_name" {
 variable "alert_topic_name" {
   description = "Name of the existing Pub/Sub topic that receives alert notifications"
   type        = string
+  default     = null
+}
+
+variable "alert_email_addresses" {
+  description = "Email addresses to receive alert notifications directly"
+  type        = list(string)
+  default     = []
 }

@@ -22,6 +22,17 @@ variable "pubsub_notification_channel_display_name" {
   default     = "GCP Monitoring Alerts - Pub/Sub"
 }
 
+variable "email_notification_addresses" {
+  description = <<-EOT
+    List of email addresses to notify when alerts fire.
+    The module creates one Cloud Monitoring email notification channel per address.
+    Can be used alongside pubsub_notification_topic (both channels receive all alerts)
+    or independently. Leave empty to send no email notifications.
+  EOT
+  type    = list(string)
+  default = []
+}
+
 variable "default_labels" {
   description = "Labels applied to every alert policy. Merged with per-service labels."
   type        = map(string)

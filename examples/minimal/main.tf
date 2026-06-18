@@ -27,9 +27,11 @@ module "monitoring" {
 
   project_id = var.project_id
 
-  # The module creates a Cloud Monitoring Pub/Sub notification channel pointing
-  # to this topic. A Cloud Run function with a push subscription processes alerts.
+  # Pub/Sub: alerts forwarded to Cloud Run function → Moogsoft (on-prem)
   pubsub_notification_topic = "projects/${var.project_id}/topics/${var.alert_topic_name}"
+
+  # Email: direct delivery — use either, both, or omit for console-only
+  email_notification_addresses = var.alert_email_addresses
 
   default_labels = {
     team = "platform"
@@ -42,8 +44,12 @@ module "monitoring" {
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
 
-output "notification_channel" {
+output "pubsub_notification_channel" {
   value = module.monitoring.pubsub_notification_channel_name
+}
+
+output "email_notification_channels" {
+  value = module.monitoring.email_notification_channel_names
 }
 
 output "enabled_services" {
@@ -64,4 +70,11 @@ variable "project_id" {
 variable "alert_topic_name" {
   description = "Name of the existing Pub/Sub topic that receives alert notifications"
   type        = string
+  default     = null
+}
+
+variable "alert_email_addresses" {
+  description = "Email addresses to receive alert notifications directly"
+  type        = list(string)
+  default     = []
 }

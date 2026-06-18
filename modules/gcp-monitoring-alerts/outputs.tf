@@ -3,6 +3,11 @@ output "pubsub_notification_channel_name" {
   value       = var.pubsub_notification_topic != null ? google_monitoring_notification_channel.pubsub[0].name : null
 }
 
+output "email_notification_channel_names" {
+  description = "Map of email address to Cloud Monitoring notification channel resource name. Empty if no addresses were provided."
+  value       = { for addr, ch in google_monitoring_notification_channel.email : addr => ch.name }
+}
+
 output "enabled_services" {
   description = "List of services for which alert policies are enabled."
   value = compact([
