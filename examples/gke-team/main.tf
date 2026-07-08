@@ -1,6 +1,6 @@
 # GKE team example: platform team running GKE workloads with compute, MIG,
 # load balancer, and Pub/Sub. Demonstrates per-service threshold customisation.
-# Alerts flow: Cloud Monitoring → Pub/Sub → Cloud Run function → PagerDuty/Slack
+# Alerts flow: Cloud Monitoring → Pub/Sub → Cloud Run function → Moogsoft
 
 terraform {
   required_version = ">= 1.3.0"
@@ -19,11 +19,11 @@ provider "google" {
 
 # ── Monitoring Module ─────────────────────────────────────────────────────────
 # Source from GitHub — pin to a release tag for reproducible builds.
-# For Bitbucket: git::https://bitbucket.org/YOUR_ORG/YOUR_REPO.git//modules/gcp-monitoring-alerts?ref=v1.0.0
-# For local dev:  ../../modules/gcp-monitoring-alerts
+# For Bitbucket: git::https://bitbucket.org/YOUR_ORG/YOUR_REPO.git?ref=v1.0.0
+# For local dev:  ../../
 
 module "monitoring" {
-  source = "git::https://github.com/YOUR_ORG/YOUR_REPO.git//modules/gcp-monitoring-alerts?ref=v1.0.0"
+  source = "git::https://github.com/YOUR_ORG/YOUR_REPO.git?ref=v1.0.0"
 
   project_id = var.project_id
 
@@ -46,7 +46,7 @@ module "monitoring" {
 
     node_cpu_warning_threshold      = 0.70
     node_cpu_critical_threshold     = 0.85
-    node_memory_warning_threshold   = 0.75
+    node_memory_warning_threshold   = 0.80
     node_memory_critical_threshold  = 0.88
     container_restart_warning       = 2
     container_restart_critical      = 8
@@ -68,7 +68,7 @@ module "monitoring" {
 
   mig = {
     enabled                        = true
-    autoscaler_utilization_warning = 0.75
+    autoscaler_utilization_warning = 0.80
   }
 
   load_balancer = {

@@ -33,6 +33,19 @@ variable "email_notification_addresses" {
   default = []
 }
 
+variable "existing_notification_channel_names" {
+  description = <<-EOT
+    List of pre-existing Cloud Monitoring notification channel resource names to attach
+    to all alert policies. Use this when notification channels are managed outside this
+    module (e.g. created by a shared infra team or another Terraform config).
+    Can be combined with pubsub_notification_topic and email_notification_addresses —
+    all channels receive every alert.
+    Format: projects/{project}/notificationChannels/{channel_id}
+  EOT
+  type    = list(string)
+  default = []
+}
+
 variable "default_labels" {
   description = "Labels applied to every alert policy. Merged with per-service labels."
   type        = map(string)
@@ -54,14 +67,14 @@ variable "gke" {
     cluster_name                     = optional(string, null)
     location                         = optional(string, null)
     labels                           = optional(map(string), {})
-    node_cpu_warning_threshold       = optional(number, 0.75)
+    node_cpu_warning_threshold       = optional(number, 0.80)
     node_cpu_critical_threshold      = optional(number, 0.90)
     node_memory_warning_threshold    = optional(number, 0.80)
     node_memory_critical_threshold   = optional(number, 0.90)
     container_restart_warning        = optional(number, 3)
     container_restart_critical       = optional(number, 10)
     container_cpu_warning_threshold  = optional(number, 0.80)
-    container_cpu_critical_threshold = optional(number, 0.95)
+    container_cpu_critical_threshold = optional(number, 0.90)
     duration_warning_secs            = optional(number, 300)
     duration_critical_secs           = optional(number, 120)
   })
@@ -82,7 +95,7 @@ variable "cloud_run" {
     error_rate_warning_threshold  = optional(number, 0.01)
     error_rate_critical_threshold = optional(number, 0.05)
     memory_warning_threshold      = optional(number, 0.80)
-    memory_critical_threshold     = optional(number, 0.95)
+    memory_critical_threshold     = optional(number, 0.90)
     duration_warning_secs         = optional(number, 300)
     duration_critical_secs        = optional(number, 60)
   })
@@ -97,12 +110,12 @@ variable "cloud_sql" {
     enabled                        = optional(bool, false)
     database_id_filter             = optional(string, null)
     labels                         = optional(map(string), {})
-    cpu_warning_threshold          = optional(number, 0.75)
+    cpu_warning_threshold          = optional(number, 0.80)
     cpu_critical_threshold         = optional(number, 0.90)
     memory_warning_threshold       = optional(number, 0.80)
     memory_critical_threshold      = optional(number, 0.90)
-    disk_warning_threshold         = optional(number, 0.75)
-    disk_critical_threshold        = optional(number, 0.85)
+    disk_warning_threshold         = optional(number, 0.80)
+    disk_critical_threshold        = optional(number, 0.90)
     connections_warning_threshold  = optional(number, 0.80)
     connections_critical_threshold = optional(number, 0.90)
     replication_lag_warning_secs   = optional(number, 30)
@@ -118,17 +131,20 @@ variable "cloud_sql" {
 variable "vpc" {
   description = "VPC and Subnet monitoring configuration."
   type = object({
-    enabled                      = optional(bool, false)
-    subnetwork_name              = optional(string, null)
-    labels                       = optional(map(string), {})
-    subnet_ip_warning_threshold  = optional(number, 0.70)
-    subnet_ip_critical_threshold = optional(number, 0.85)
-    firewall_drop_warning        = optional(number, 100)
-    firewall_drop_critical       = optional(number, 500)
-    nat_alloc_fail_warning       = optional(number, 1)
-    nat_alloc_fail_critical      = optional(number, 10)
-    duration_warning_secs        = optional(number, 300)
-    duration_critical_secs       = optional(number, 120)
+    enabled                                = optional(bool, false)
+    subnetwork_name                        = optional(string, null)
+    labels                                 = optional(map(string), {})
+    subnet_ip_warning_threshold            = optional(number, 0.80)
+    subnet_ip_critical_threshold           = optional(number, 0.90)
+    enable_secondary_range_alerts          = optional(bool, false)
+    secondary_subnet_ip_warning_threshold  = optional(number, 0.80)
+    secondary_subnet_ip_critical_threshold = optional(number, 0.90)
+    firewall_drop_warning                  = optional(number, 100)
+    firewall_drop_critical                 = optional(number, 500)
+    nat_alloc_fail_warning                 = optional(number, 1)
+    nat_alloc_fail_critical                = optional(number, 10)
+    duration_warning_secs                  = optional(number, 300)
+    duration_critical_secs                 = optional(number, 120)
   })
   default = {}
 }
@@ -141,7 +157,7 @@ variable "bigquery" {
     enabled                     = optional(bool, false)
     labels                      = optional(map(string), {})
     slot_utilization_warning    = optional(number, 0.80)
-    slot_utilization_critical   = optional(number, 0.95)
+    slot_utilization_critical   = optional(number, 0.90)
     job_execution_warning_secs  = optional(number, 600)
     job_execution_critical_secs = optional(number, 1800)
     table_count_warning         = optional(number, 8000)
@@ -162,7 +178,7 @@ variable "compute_instance" {
     enabled                   = optional(bool, false)
     instance_name_filter      = optional(string, null)
     labels                    = optional(map(string), {})
-    cpu_warning_threshold     = optional(number, 0.75)
+    cpu_warning_threshold     = optional(number, 0.80)
     cpu_critical_threshold    = optional(number, 0.90)
     memory_warning_threshold  = optional(number, 0.80)
     memory_critical_threshold = optional(number, 0.90)
@@ -246,7 +262,7 @@ variable "vertex_ai" {
     error_count_critical      = optional(number, 50)
     latency_p99_warning_ms    = optional(number, 2000)
     latency_p99_critical_ms   = optional(number, 5000)
-    cpu_warning_threshold     = optional(number, 0.75)
+    cpu_warning_threshold     = optional(number, 0.80)
     cpu_critical_threshold    = optional(number, 0.90)
     pipeline_fail_warning     = optional(number, 1)
     pipeline_fail_critical    = optional(number, 5)
@@ -287,7 +303,7 @@ variable "mig" {
     instance_group_filter           = optional(string, null)
     labels                          = optional(map(string), {})
     autoscaler_utilization_warning  = optional(number, 0.80)
-    autoscaler_utilization_critical = optional(number, 0.95)
+    autoscaler_utilization_critical = optional(number, 0.90)
     unhealthy_ratio_warning         = optional(number, 0.10)
     unhealthy_ratio_critical        = optional(number, 0.25)
     duration_warning_secs           = optional(number, 300)
@@ -326,7 +342,7 @@ variable "gemini" {
     error_rate_warning_threshold  = optional(number, 0.05)
     error_rate_critical_threshold = optional(number, 0.15)
     quota_warning_threshold       = optional(number, 0.80)
-    quota_critical_threshold      = optional(number, 0.95)
+    quota_critical_threshold      = optional(number, 0.90)
     duration_warning_secs         = optional(number, 300)
     duration_critical_secs        = optional(number, 120)
   })
@@ -341,8 +357,8 @@ variable "ncc" {
     enabled                       = optional(bool, false)
     hub_name_filter               = optional(string, null)
     labels                        = optional(map(string), {})
-    throughput_warning_threshold  = optional(number, 0.70)
-    throughput_critical_threshold = optional(number, 0.85)
+    throughput_warning_threshold  = optional(number, 0.80)
+    throughput_critical_threshold = optional(number, 0.90)
     duration_warning_secs         = optional(number, 300)
     duration_critical_secs        = optional(number, 120)
   })
@@ -386,10 +402,10 @@ variable "project_quotas" {
   type = object({
     enabled                       = optional(bool, false)
     labels                        = optional(map(string), {})
-    allocation_warning_threshold  = optional(number, 0.75)
+    allocation_warning_threshold  = optional(number, 0.80)
     allocation_critical_threshold = optional(number, 0.90)
     rate_warning_threshold        = optional(number, 0.80)
-    rate_critical_threshold       = optional(number, 0.95)
+    rate_critical_threshold       = optional(number, 0.90)
     duration_warning_secs         = optional(number, 300)
     duration_critical_secs        = optional(number, 120)
   })

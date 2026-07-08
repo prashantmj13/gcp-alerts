@@ -72,14 +72,20 @@ output "alert_policy_ids" {
     } : {},
 
     # ── VPC ───────────────────────────────────────────────────────────────────
-    var.vpc.enabled ? {
-      vpc_subnet_ip_warning    = google_monitoring_alert_policy.vpc_subnet_ip_warning[0].name
-      vpc_subnet_ip_critical   = google_monitoring_alert_policy.vpc_subnet_ip_critical[0].name
-      vpc_firewall_drops_warning  = google_monitoring_alert_policy.vpc_firewall_drops_warning[0].name
-      vpc_firewall_drops_critical = google_monitoring_alert_policy.vpc_firewall_drops_critical[0].name
-      vpc_nat_alloc_warning    = google_monitoring_alert_policy.vpc_nat_alloc_warning[0].name
-      vpc_nat_alloc_critical   = google_monitoring_alert_policy.vpc_nat_alloc_critical[0].name
-    } : {},
+    var.vpc.enabled ? merge(
+      {
+        vpc_subnet_ip_warning       = google_monitoring_alert_policy.vpc_subnet_ip_warning[0].name
+        vpc_subnet_ip_critical      = google_monitoring_alert_policy.vpc_subnet_ip_critical[0].name
+        vpc_firewall_drops_warning  = google_monitoring_alert_policy.vpc_firewall_drops_warning[0].name
+        vpc_firewall_drops_critical = google_monitoring_alert_policy.vpc_firewall_drops_critical[0].name
+        vpc_nat_alloc_warning       = google_monitoring_alert_policy.vpc_nat_alloc_warning[0].name
+        vpc_nat_alloc_critical      = google_monitoring_alert_policy.vpc_nat_alloc_critical[0].name
+      },
+      var.vpc.enable_secondary_range_alerts ? {
+        vpc_secondary_ip_warning  = google_monitoring_alert_policy.vpc_secondary_ip_warning[0].name
+        vpc_secondary_ip_critical = google_monitoring_alert_policy.vpc_secondary_ip_critical[0].name
+      } : {},
+    ) : {},
 
     # ── BigQuery ──────────────────────────────────────────────────────────────
     var.bigquery.enabled ? {

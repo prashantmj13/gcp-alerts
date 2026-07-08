@@ -1,5 +1,6 @@
-# All alert policy resources are defined in alerts/*.tf.
-# This file manages notification channels used by all alert policies.
+# Notification channels shared by all alert policies in this module.
+# Alert policy resources are defined in the per-service .tf files
+# alongside this file (gke.tf, cloud_run.tf, cloud_sql.tf, etc.).
 # Both channels can be active simultaneously — all alerts are sent to every
 # configured channel.
 

@@ -19,11 +19,11 @@ provider "google" {
 
 # ── Monitoring Module ─────────────────────────────────────────────────────────
 # Source from GitHub — pin to a release tag for reproducible builds.
-# For Bitbucket: git::https://bitbucket.org/YOUR_ORG/YOUR_REPO.git//modules/gcp-monitoring-alerts?ref=v1.0.0
-# For local dev:  ../../modules/gcp-monitoring-alerts
+# For Bitbucket: git::https://bitbucket.org/YOUR_ORG/YOUR_REPO.git?ref=v1.0.0
+# For local dev:  ../../
 
 module "monitoring" {
-  source = "git::https://github.com/YOUR_ORG/YOUR_REPO.git//modules/gcp-monitoring-alerts?ref=v1.0.0"
+  source = "git::https://github.com/YOUR_ORG/YOUR_REPO.git?ref=v1.0.0"
 
   project_id = var.project_id
 

@@ -65,6 +65,71 @@ resource "google_monitoring_alert_policy" "vpc_subnet_ip_critical" {
   }
 }
 
+# ── Secondary Range IP Utilisation ───────────────────────────────────────────
+# Monitors alias IP ranges (used by GKE pods and services). Opt-in because not
+# all VPCs use secondary ranges. Uses the same metric as the primary range alerts
+# but filtered to range_type="SECONDARY".
+
+resource "google_monitoring_alert_policy" "vpc_secondary_ip_warning" {
+  count        = var.vpc.enabled && var.vpc.enable_secondary_range_alerts ? 1 : 0
+  project      = var.project_id
+  display_name = "[VPC][WARNING] Secondary Range IP Utilisation High"
+  combiner     = "OR"
+  user_labels  = merge(local.vpc_labels, local.severity_warning)
+
+  conditions {
+    display_name = "Secondary range IP utilisation > ${var.vpc.secondary_subnet_ip_warning_threshold * 100}%"
+    condition_threshold {
+      filter          = "resource.type=\"gce_subnetwork\"${local.vpc_subnet_filter} AND metric.type=\"networking.googleapis.com/vpc_flow/subnet_used_address_ratio\" AND metric.labels.range_type=\"SECONDARY\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.vpc.secondary_subnet_ip_warning_threshold
+      duration        = "${var.vpc.duration_warning_secs}s"
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  alert_strategy { auto_close = "604800s" }
+
+  documentation {
+    content   = "Secondary subnet IP range utilisation has exceeded ${var.vpc.secondary_subnet_ip_warning_threshold * 100}%. GKE pod or service CIDRs may be approaching exhaustion. Plan secondary range expansion. ${var.alert_documentation_prefix}/runbooks/vpc-secondary-ip"
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "vpc_secondary_ip_critical" {
+  count        = var.vpc.enabled && var.vpc.enable_secondary_range_alerts ? 1 : 0
+  project      = var.project_id
+  display_name = "[VPC][CRITICAL] Secondary Range IP Exhaustion Imminent"
+  combiner     = "OR"
+  user_labels  = merge(local.vpc_labels, local.severity_critical)
+
+  conditions {
+    display_name = "Secondary range IP utilisation > ${var.vpc.secondary_subnet_ip_critical_threshold * 100}%"
+    condition_threshold {
+      filter          = "resource.type=\"gce_subnetwork\"${local.vpc_subnet_filter} AND metric.type=\"networking.googleapis.com/vpc_flow/subnet_used_address_ratio\" AND metric.labels.range_type=\"SECONDARY\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.vpc.secondary_subnet_ip_critical_threshold
+      duration        = "${var.vpc.duration_critical_secs}s"
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  alert_strategy { auto_close = "604800s" }
+
+  documentation {
+    content   = "Secondary subnet IP range utilisation is critically high at ${var.vpc.secondary_subnet_ip_critical_threshold * 100}%. New GKE pods or services may fail to schedule. Expand secondary CIDR ranges immediately. ${var.alert_documentation_prefix}/runbooks/vpc-secondary-ip"
+    mime_type = "text/markdown"
+  }
+}
+
 # ── Firewall Dropped Packets ──────────────────────────────────────────────────
 
 resource "google_monitoring_alert_policy" "vpc_firewall_drops_warning" {

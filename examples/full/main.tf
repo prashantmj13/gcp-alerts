@@ -19,11 +19,11 @@ provider "google" {
 
 # ── Monitoring Module ─────────────────────────────────────────────────────────
 # Source from GitHub — pin to a release tag for reproducible builds.
-# For Bitbucket: git::https://bitbucket.org/YOUR_ORG/YOUR_REPO.git//modules/gcp-monitoring-alerts?ref=v1.0.0
-# For local dev:  ../../modules/gcp-monitoring-alerts
+# For Bitbucket: git::https://bitbucket.org/YOUR_ORG/YOUR_REPO.git?ref=v1.0.0
+# For local dev:  ../../
 
 module "monitoring" {
-  source = "git::https://github.com/YOUR_ORG/YOUR_REPO.git//modules/gcp-monitoring-alerts?ref=v1.0.0"
+  source = "git::https://github.com/YOUR_ORG/YOUR_REPO.git?ref=v1.0.0"
 
   project_id = var.project_id
 
@@ -43,16 +43,11 @@ module "monitoring" {
   alert_documentation_prefix = "https://runbooks.example.com"
 
   gke = {
-    enabled                         = true
-    cluster_name                    = var.gke_cluster_name
-    location                        = var.region
-    node_cpu_warning_threshold      = 0.70
-    node_cpu_critical_threshold     = 0.85
-    node_memory_warning_threshold   = 0.75
-    node_memory_critical_threshold  = 0.90
-    container_restart_warning       = 2
-    container_restart_critical      = 8
-    container_cpu_warning_threshold = 0.75
+    enabled                        = true
+    cluster_name                   = var.gke_cluster_name
+    location                       = var.region
+    container_restart_warning      = 2
+    container_restart_critical     = 8
   }
 
   cloud_run = {
@@ -61,35 +56,26 @@ module "monitoring" {
     latency_p99_critical_ms       = 4000
     error_rate_warning_threshold  = 0.005
     error_rate_critical_threshold = 0.03
-    memory_warning_threshold      = 0.75
   }
 
   cloud_sql = {
-    enabled                        = true
-    cpu_warning_threshold          = 0.70
-    cpu_critical_threshold         = 0.85
-    disk_warning_threshold         = 0.70
-    replication_lag_warning_secs   = 20
-    replication_lag_critical_secs  = 60
+    enabled                       = true
+    replication_lag_warning_secs  = 20
+    replication_lag_critical_secs = 60
   }
 
   vpc = {
-    enabled                      = true
-    subnet_ip_warning_threshold  = 0.65
-    subnet_ip_critical_threshold = 0.80
+    enabled = true
   }
 
   bigquery = {
-    enabled                   = true
-    slot_utilization_warning  = 0.75
-    slot_utilization_critical = 0.90
-    failed_jobs_warning       = 3
-    failed_jobs_critical      = 10
+    enabled              = true
+    failed_jobs_warning  = 3
+    failed_jobs_critical = 10
   }
 
   compute_instance = {
-    enabled               = true
-    cpu_warning_threshold = 0.70
+    enabled = true
   }
 
   load_balancer = {
@@ -127,7 +113,7 @@ module "monitoring" {
 
   mig = {
     enabled                        = true
-    autoscaler_utilization_warning = 0.75
+    autoscaler_utilization_warning = 0.80
   }
 
   cloud_storage = {
